@@ -202,7 +202,7 @@ def prepare_data(data):
 			pre_date[1] = str(MONTHS.index(pre_date[1])+1)
 			sample_reg[4]="/".join(pre_date)
 			sample_reg[3]=samp[0]
-			sample_reg[0]=samp[15] if samp[15].isnumeric() else 0
+			sample_reg[0]=samp[15] if samp[15].isnumeric() else '0'
 			sample_reg[5]=samp[4]
 			sample_reg[6:40]=samp[5:39]
 			sample_reg[40]=str(samp[39])
