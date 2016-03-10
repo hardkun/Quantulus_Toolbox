@@ -213,6 +213,7 @@ def prepare_data(data):
 
 def main():
 	from sys import argv
+	print(argv)
 	if len(argv)!=3:
 		print("Usage: reg2csv.py folder/ output_file.csv")
 	else:
