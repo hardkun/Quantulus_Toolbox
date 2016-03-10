@@ -183,7 +183,7 @@ def prepare_data(data):
 		curr_reg[1]=reg['DIR']
 		curr_reg[2]=reg['ID']
 		curr_reg[43]=str(reg['PSA'])
-		curr_reg[44]=reg['PAC']
+		curr_reg[44]=str(reg['PAC'])
 		curr_reg[45]=reg['CB']
 		for i in range(8):
 			curr_reg[46+3*i]=reg['WIN'][i][0]
