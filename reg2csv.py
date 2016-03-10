@@ -12,7 +12,7 @@ def get_files(dir):
 		return filenames 
 def save_csv (path,data):
 	f=open(path,'w')
-	f.write('\n'.join('\t'.join(i) for i in data))
+	f.write('\n'.join(sub(r'\.',r',',';'.join(i) for i in data)))
 	f.close()
 out_pattern = lambda var,intg:print("Set {} to {}".format(var,intg))
 out_pattern2 = lambda var,intg:-1#print("{} = {}".format(var,intg))
