@@ -1,12 +1,11 @@
 #!/usr/bin/python\
 REG = "REGISTRY.TXT"
 from re import findall, search, sub
-from os import walk
+from os import walk, path
 from copy import deepcopy
 from math import ceil
 from xlwt import Workbook, XFStyle
-from datetime import date
-
+from datetime import datetime,date
 #format for months
 MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
 #colums for in output file
@@ -19,16 +18,18 @@ elem_map = lambda funcs,data: [funcs[i](data[i]) for i in range(len(data))]
 null = lambda x:x
 #spliting time variable
 time_split = lambda time_var : sum(elem_map([int,lambda x:float(x)/60],time_var.split(':'))) 
+time_with_sec_split = lambda time_var : sum(elem_map([int,lambda x:float(x)/60,lambda x:float(x)/3600],time_var.split(':'))) 
 #type for element-wise convert
-samp_types = [[int,int,int,time_split,float,float,int,float,float,time_split],[null,float,int,float,float,int,float],[float,int,float,float,int,float]]
+samp_types = [[int,int,int,time_with_sec_split,float,float,int,float,float,time_split],[null,float,int,float,float,int,float],[float,int,float,float,int,float]]
+#get date and time for given file
+getDateTime = lambda filename: datetime.fromtimestamp(path.getmtime(filename))
 
 def get_files(dir):
 	"""
-	Get files from given directory
+	Get filenames from given directory
 	"""
 	for dirpath,dirnames,filenames in walk(dir): 
 		return filenames 
-
 def save_xls(path,data):
 	"""
 	Save formated data to xls file
@@ -93,7 +94,7 @@ def folder_2_data(path):
 				#out_pattern2('State',state)
 				state=0
 				reg_part = {}
-				reg_part['DATE']=matched[0]
+				reg_part['DATE']=matched[0] #ignoring this
 				#out_pattern2('\tDate',matched[0])
 				#out_pattern2('State',state)
 		elif state == 0:									#Searching for directory (DIR)
@@ -104,7 +105,7 @@ def folder_2_data(path):
 				#out_pattern2('\tDir',matched[0])
 				#out_pattern2('State',state)
 		elif state == 1:									#Searching for ID
-			matched = findall(r'ID: (\S+)',f_data[pos])
+			matched = findall(r'ID: (.+)\s*',f_data[pos])
 			if len(matched)==1:
 				state+=1
 				reg_part['ID']=matched[0]
@@ -198,6 +199,7 @@ def folder_2_data(path):
 					cpmex,countsex = 0,0
 				s_header.append(cpmex)
 				s_header.append(countsex)
+				s_header.append(getDateTime(path+'/'+sub(r'S',r'N',s_header[0])))
 				#out_pattern2('\tcountsex',countsex)
 				#out_pattern2('\tcpmex',cpmex)
 				reg_part['SAMPLES'].append(s_header)
@@ -206,8 +208,8 @@ def folder_2_data(path):
 			if len(matched2)==1:
 				state=0
 				samples_started = False
-				if debug_out==None:
-					print("*** NEW REG ***")
+				#if debug_out==None:
+				#	print("*** NEW REG ***")
 				unmined.append(reg_part)
 				reg_part = {}
 				reg_part['DATE']=matched2[0]
@@ -219,9 +221,8 @@ def folder_2_data(path):
 	return unmined
 
 	
-def prepare_data(data,first_colum=COL):
+def prepare_data(data):
 	result=[]
-	result.append(first_colum)
 	for reg in data:
 		curr_reg = ['-_-' for i in range(77)]
 		#global for all samples vars
@@ -244,16 +245,14 @@ def prepare_data(data,first_colum=COL):
 		for samp in reg['SAMPLES']:
 		#if False:
 			sample_reg = deepcopy(curr_reg)
-			pre_date = list(samp[1:4])
-			pre_date[1] = str(MONTHS.index(pre_date[1])+1)
-			pre_date = list(map(int,pre_date))
-			sample_reg[4]=date(pre_date[2],pre_date[1],pre_date[0])
+			preTime = samp[42].timetuple()
+			sample_reg[0]=int(samp[15]) if samp[15].isnumeric() else 0
 			sample_reg[3]=samp[0]
-			sample_reg[0]=samp[15] if samp[15].isnumeric() else 0
-			sample_reg[5]=round(time_split(samp[4]),3)
+			sample_reg[4]=date(preTime[0],preTime[1],preTime[2])
+			sample_reg[5]=round(time_with_sec_split("{}:{}:{}".format(preTime[3],preTime[4],preTime[5])),3)
 			sample_reg[6:41]=samp[5:40]
-			sample_reg[15]=round(sample_reg[15],2)
 			sample_reg[9]=round(sample_reg[9],2)
+			sample_reg[15]=round(sample_reg[15],2)
 			sample_reg[41]=samp[40]
 			sample_reg[42]=samp[41]
 			result.append(sample_reg)
@@ -263,14 +262,21 @@ def prepare_data(data,first_colum=COL):
 def main():
 	from sys import argv
 	if len(argv)!=3:
-		print("Usage: reg2csv.py folder/ output_file.xls")
+		print("Usage: reg2csv.py folder output_file.xls")
 	else:
-		if REG in get_files(argv[1]):
-			unmined = folder_2_data(argv[1])
-			mined = prepare_data(unmined)
-			save_xls(argv[2],mined)
+		final_samples = [COL]
+		dir_count = 0
+		for dirpath,dirnames,filenames in walk(argv[1]): 
+			if REG in filenames:
+				unmined_samples = folder_2_data(dirpath)
+				mined_samples = prepare_data(unmined_samples)
+				final_samples+=mined_samples
+				dir_count+=1
+		if len(final_samples)!=1:
+			print("{} folders found, with {} samples".format(dir_count,len(final_samples)-1))
+			save_xls(argv[2],final_samples)
 		else:
-			print('Can\'t find '+REG+' file')
+			print('Can\'t found any samples')
 
 if __name__ == "__main__":
 	main()

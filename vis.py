@@ -10,7 +10,7 @@ REG = "REGISTRY.TXT"
 def get_folders(root):
 	found = []
 	for path,folders,files in walk(root): 
-		if (REG in files)and(any(i.split(".")[1].isnumeric() for i in files)):#found registry and spectre
+		if (REG in files)and(any(i.split(".")[1].isnumeric() for i in files if '.' in i)):#found registry and spectre
 			found.append(path)
 	return found
 def get_files(dir):
